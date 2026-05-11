@@ -5,17 +5,193 @@ const SUPABASE_ANON_KEY =
 const CATEGORIES = [
   "Frutas y verduras",
   "Carnes y pescados",
-  "Lácteos",
-  "Panadería",
+  "L\u00e1cteos",
+  "Panader\u00eda",
   "Bebidas",
   "Limpieza",
   "Congelados",
   "Otros",
 ];
 
+const CATEGORY_RULES = [
+  {
+    category: "Congelados",
+    words: [
+      "congelado",
+      "congelada",
+      "helado",
+      "helados",
+      "hielo",
+      "pizza congelada",
+      "verdura congelada",
+      "croquetas",
+      "nuggets",
+    ],
+  },
+  {
+    category: "Limpieza",
+    words: [
+      "lejia",
+      "detergente",
+      "suavizante",
+      "lavavajillas",
+      "lavaplatos",
+      "fregasuelos",
+      "limpiacristales",
+      "desinfectante",
+      "estropajo",
+      "bayeta",
+      "papel higienico",
+      "papel de cocina",
+      "servilletas",
+      "bolsas basura",
+      "bolsas de basura",
+    ],
+  },
+  {
+    category: "Frutas y verduras",
+    words: [
+      "aguacate",
+      "ajo",
+      "ajos",
+      "alcachofa",
+      "apio",
+      "banana",
+      "berenjena",
+      "brocoli",
+      "calabacin",
+      "calabaza",
+      "cebolla",
+      "cebollas",
+      "champi\u00f1on",
+      "champi\u00f1ones",
+      "ciruela",
+      "coliflor",
+      "espinaca",
+      "espinacas",
+      "fresa",
+      "fresas",
+      "fruta",
+      "kiwi",
+      "lechuga",
+      "limon",
+      "limones",
+      "mandarina",
+      "mandarinas",
+      "manzana",
+      "manzanas",
+      "melon",
+      "naranja",
+      "naranjas",
+      "patata",
+      "patatas",
+      "pepino",
+      "pera",
+      "peras",
+      "pimiento",
+      "pimientos",
+      "platano",
+      "platanos",
+      "puerro",
+      "rucula",
+      "tomate",
+      "tomates",
+      "uva",
+      "uvas",
+      "verdura",
+      "verduras",
+      "zanahoria",
+      "zanahorias",
+    ],
+  },
+  {
+    category: "Carnes y pescados",
+    words: [
+      "atun",
+      "bacalao",
+      "bacon",
+      "bonito",
+      "carne",
+      "cerdo",
+      "chorizo",
+      "chuleta",
+      "filete",
+      "filetes",
+      "hamburguesa",
+      "jamon",
+      "lomo",
+      "longaniza",
+      "merluza",
+      "pavo",
+      "pescado",
+      "pollo",
+      "salchicha",
+      "salmon",
+      "sardina",
+      "ternera",
+    ],
+  },
+  {
+    category: "L\u00e1cteos",
+    words: [
+      "batido",
+      "mantequilla",
+      "leche",
+      "queso",
+      "quesitos",
+      "yogur",
+      "yogures",
+      "yogurt",
+      "nata",
+      "kefir",
+      "cuajada",
+    ],
+  },
+  {
+    category: "Panader\u00eda",
+    words: [
+      "baguette",
+      "barra",
+      "bizcocho",
+      "bolleria",
+      "bollo",
+      "brioche",
+      "croissant",
+      "donut",
+      "empanada",
+      "galleta",
+      "galletas",
+      "magdalena",
+      "magdalenas",
+      "pan",
+      "pan de molde",
+      "tostadas",
+    ],
+  },
+  {
+    category: "Bebidas",
+    words: [
+      "agua",
+      "cerveza",
+      "cocacola",
+      "coca cola",
+      "cola",
+      "fanta",
+      "gaseosa",
+      "refresco",
+      "refrescos",
+      "sidra",
+      "vino",
+      "zumo",
+      "zumos",
+    ],
+  },
+];
+
 const state = {
   items: [],
   activeCategory: "Todas",
+  manualCategory: false,
   loading: true,
 };
 
@@ -42,6 +218,10 @@ function boot() {
 
 function bindEvents() {
   itemForm.addEventListener("submit", handleAddItem);
+  itemInput.addEventListener("input", updateSuggestedCategory);
+  categorySelect.addEventListener("change", () => {
+    state.manualCategory = true;
+  });
   refreshButton.addEventListener("click", loadItems);
 }
 
@@ -92,12 +272,13 @@ async function loadItems() {
   state.loading = false;
   connectionState.textContent = "Sincronizada";
   renderItems();
+  autoCategorizeIncomingItems();
 }
 
 async function handleAddItem(event) {
   event.preventDefault();
   const item = itemInput.value.trim();
-  const category = categorySelect.value || "Otros";
+  const category = state.manualCategory ? categorySelect.value : classifyItem(item);
 
   if (!item) return;
 
@@ -112,12 +293,14 @@ async function handleAddItem(event) {
   itemForm.querySelector("button[type='submit']").disabled = false;
 
   if (error) {
-    connectionState.textContent = "No se pudo añadir";
+    connectionState.textContent = "No se pudo a\u00f1adir";
     console.error(error);
     return;
   }
 
   itemInput.value = "";
+  categorySelect.value = "Otros";
+  state.manualCategory = false;
   itemInput.focus();
   await loadItems();
 }
@@ -188,13 +371,79 @@ function renderItem(row) {
       </button>
       <span class="item-main">
         <span class="item-name">${escapeHtml(row.item)}</span>
-        <span class="item-meta">${escapeHtml(row.category || "Otros")}${date ? ` · ${date}` : ""}</span>
+        <span class="item-meta">${escapeHtml(row.category || "Otros")}${date ? ` \u00b7 ${date}` : ""}</span>
       </span>
       <button class="delete-button" type="button" data-action="delete" data-id="${row.id}" aria-label="Borrar ${escapeHtml(row.item)}">
         ×
       </button>
     </li>
   `;
+}
+
+function updateSuggestedCategory() {
+  if (state.manualCategory) return;
+  categorySelect.value = classifyItem(itemInput.value);
+}
+
+async function autoCategorizeIncomingItems() {
+  const itemsToUpdate = state.items
+    .map((item) => ({ ...item, suggestedCategory: classifyItem(item.item) }))
+    .filter(
+      (item) =>
+        item.suggestedCategory !== "Otros" &&
+        (!item.category || item.category === "Otros") &&
+        item.category !== item.suggestedCategory,
+    );
+
+  if (itemsToUpdate.length === 0) return;
+
+  connectionState.textContent = "Clasificando";
+
+  await Promise.all(
+    itemsToUpdate.map((item) =>
+      db.from("shopping_list").update({ category: item.suggestedCategory }).eq("id", item.id),
+    ),
+  );
+
+  state.items = state.items.map((item) => {
+    const updated = itemsToUpdate.find((candidate) => candidate.id === item.id);
+    return updated ? { ...item, category: updated.suggestedCategory } : item;
+  });
+
+  connectionState.textContent = "Sincronizada";
+  renderItems();
+}
+
+function classifyItem(item) {
+  const normalizedItem = normalizeText(item);
+  if (!normalizedItem) return "Otros";
+
+  for (const rule of CATEGORY_RULES) {
+    if (rule.words.some((word) => hasWordOrPhrase(normalizedItem, word))) {
+      return rule.category;
+    }
+  }
+
+  return "Otros";
+}
+
+function hasWordOrPhrase(normalizedItem, word) {
+  const normalizedWord = normalizeText(word);
+  return new RegExp(`(^|\\s)${escapeRegExp(normalizedWord)}($|\\s)`).test(normalizedItem);
+}
+
+function normalizeText(value) {
+  return String(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\u00f1\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function subscribeToChanges() {
