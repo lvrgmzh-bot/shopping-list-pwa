@@ -5,12 +5,64 @@ const SUPABASE_ANON_KEY =
 const CATEGORIES = [
   "Frutas y verduras",
   "Carnes y pescados",
-  "L\u00e1cteos",
-  "Panader\u00eda",
+  "Lácteos",
+  "Panadería",
   "Bebidas",
   "Limpieza",
   "Congelados",
   "Otros",
+];
+
+const CATEGORY_META = {
+  "Frutas y verduras": { emoji: "🥬", aisle: "Frescos" },
+  "Carnes y pescados": { emoji: "🥩", aisle: "Carne y pescado" },
+  Lácteos: { emoji: "🥛", aisle: "Lácteos y huevos" },
+  Panadería: { emoji: "🥖", aisle: "Pan y bollería" },
+  Bebidas: { emoji: "🥤", aisle: "Bebidas" },
+  Limpieza: { emoji: "🧽", aisle: "Droguería" },
+  Congelados: { emoji: "❄️", aisle: "Congelados" },
+  Otros: { emoji: "🛒", aisle: "Despensa" },
+};
+
+const PRODUCT_EMOJI_RULES = [
+  { emoji: "🍎", words: ["manzana", "pera", "fruta", "ciruela"] },
+  { emoji: "🍌", words: ["platano", "banana"] },
+  { emoji: "🍊", words: ["naranja", "mandarina", "limon", "lima"] },
+  { emoji: "🍓", words: ["fresa", "frambuesa", "arandanos"] },
+  { emoji: "🥑", words: ["aguacate"] },
+  { emoji: "🍅", words: ["tomate"] },
+  { emoji: "🥔", words: ["patata", "boniato"] },
+  { emoji: "🥕", words: ["zanahoria"] },
+  { emoji: "🥬", words: ["lechuga", "rucula", "rúcula", "espinaca", "ensalada", "canonigos"] },
+  { emoji: "🧅", words: ["cebolla", "ajo", "puerro"] },
+  { emoji: "🌶️", words: ["pimiento"] },
+  { emoji: "🥦", words: ["brocoli", "coliflor", "calabacin", "berenjena", "verdura"] },
+  { emoji: "🥩", words: ["ternera", "vacuno", "filete", "carne", "chuleta"] },
+  { emoji: "🍗", words: ["pollo", "pavo", "pechuga"] },
+  { emoji: "🥓", words: ["bacon", "jamon", "chorizo", "embutido", "sobrasada"] },
+  { emoji: "🐟", words: ["pescado", "salmon", "merluza", "atun", "bacalao", "sardina"] },
+  { emoji: "🦐", words: ["gamba", "langostino", "marisco", "mejillones", "calamar", "sepia"] },
+  { emoji: "🥛", words: ["leche", "kefir", "batido"] },
+  { emoji: "🧀", words: ["queso", "quesitos", "mozzarella", "parmesano"] },
+  { emoji: "🥚", words: ["huevo", "huevos"] },
+  { emoji: "🍦", words: ["yogur", "yogures", "helado", "flan", "natillas"] },
+  { emoji: "🥖", words: ["pan", "baguette", "barra", "hogaza"] },
+  { emoji: "🥐", words: ["croissant", "bolleria", "magdalena", "donut", "bizcocho"] },
+  { emoji: "🍪", words: ["galleta", "galletas"] },
+  { emoji: "💧", words: ["agua"] },
+  { emoji: "🥤", words: ["refresco", "cola", "cocacola", "fanta", "zumo", "aquarius"] },
+  { emoji: "🍷", words: ["vino", "cava", "sangria", "sidra"] },
+  { emoji: "🍺", words: ["cerveza"] },
+  { emoji: "🧴", words: ["detergente", "suavizante", "lejia", "lavavajillas", "limpiador"] },
+  { emoji: "🧻", words: ["papel higienico", "papel de cocina", "servilletas"] },
+  { emoji: "🧽", words: ["bayeta", "estropajo", "guantes", "fregasuelos"] },
+  { emoji: "🧊", words: ["hielo", "congelado", "congelada", "congelados"] },
+  { emoji: "🍕", words: ["pizza"] },
+  { emoji: "🍚", words: ["arroz", "pasta", "garbanzo", "lenteja", "alubia"] },
+  { emoji: "☕", words: ["cafe", "infusion", "te", "cacao"] },
+  { emoji: "🍫", words: ["chocolate", "caramelos", "azucar"] },
+  { emoji: "🫒", words: ["aceite", "aceitunas", "vinagre"] },
+  { emoji: "🥫", words: ["conserva", "caldo", "sopa", "salsa", "ketchup", "mayonesa"] },
 ];
 
 const CATEGORY_RULES = [...(window.CATEGORY_CATALOG || [])].sort(
@@ -19,7 +71,6 @@ const CATEGORY_RULES = [...(window.CATEGORY_CATALOG || [])].sort(
 
 const state = {
   items: [],
-  activeCategory: "Todas",
   manualCategory: false,
   loading: true,
 };
@@ -29,16 +80,15 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const itemForm = document.querySelector("#itemForm");
 const itemInput = document.querySelector("#itemInput");
 const categorySelect = document.querySelector("#categorySelect");
-const shoppingList = document.querySelector("#shoppingList");
+const routeBoard = document.querySelector("#routeBoard");
+const aisleStrip = document.querySelector("#aisleStrip");
 const emptyState = document.querySelector("#emptyState");
-const filters = document.querySelector("#filters");
 const pendingCount = document.querySelector("#pendingCount");
 const connectionState = document.querySelector("#connectionState");
 const refreshButton = document.querySelector("#refreshButton");
 
 function boot() {
   renderCategories();
-  renderFilters();
   bindEvents();
   loadItems();
   subscribeToChanges();
@@ -56,30 +106,9 @@ function bindEvents() {
 
 function renderCategories() {
   categorySelect.innerHTML = CATEGORIES.map(
-    (category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`,
+    (category) => `<option value="${escapeHtml(category)}">${getCategoryEmoji(category)} ${escapeHtml(category)}</option>`,
   ).join("");
   categorySelect.value = "Otros";
-}
-
-function renderFilters() {
-  const options = ["Todas", ...CATEGORIES];
-  filters.innerHTML = options
-    .map(
-      (category) => `
-        <button class="filter-chip" type="button" aria-pressed="${category === state.activeCategory}" data-category="${escapeHtml(category)}">
-          ${escapeHtml(category)}
-        </button>
-      `,
-    )
-    .join("");
-
-  filters.querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.activeCategory = button.dataset.category;
-      renderFilters();
-      renderItems();
-    });
-  });
 }
 
 async function loadItems() {
@@ -97,10 +126,10 @@ async function loadItems() {
     return;
   }
 
-  state.items = data ?? [];
+  state.items = normalizeRows(data ?? []);
   state.loading = false;
   connectionState.textContent = "Sincronizada";
-  renderItems();
+  renderShoppingRoute();
   autoCategorizeIncomingItems();
 }
 
@@ -122,7 +151,7 @@ async function handleAddItem(event) {
   itemForm.querySelector("button[type='submit']").disabled = false;
 
   if (error) {
-    connectionState.textContent = "No se pudo a\u00f1adir";
+    connectionState.textContent = "No se pudo añadir";
     console.error(error);
     return;
   }
@@ -137,14 +166,14 @@ async function handleAddItem(event) {
 async function toggleItem(id, done) {
   const original = [...state.items];
   state.items = state.items.map((item) => (item.id === id ? { ...item, done: !done } : item));
-  renderItems();
+  renderShoppingRoute();
 
   const { error } = await db.from("shopping_list").update({ done: !done }).eq("id", id);
 
   if (error) {
     state.items = original;
     connectionState.textContent = "No se pudo guardar";
-    renderItems();
+    renderShoppingRoute();
     console.error(error);
   }
 }
@@ -152,61 +181,115 @@ async function toggleItem(id, done) {
 async function deleteItem(id) {
   const original = [...state.items];
   state.items = state.items.filter((item) => item.id !== id);
-  renderItems();
+  renderShoppingRoute();
 
   const { error } = await db.from("shopping_list").delete().eq("id", id);
 
   if (error) {
     state.items = original;
     connectionState.textContent = "No se pudo borrar";
-    renderItems();
+    renderShoppingRoute();
     console.error(error);
   }
 }
 
-function renderItems() {
-  const visibleItems =
-    state.activeCategory === "Todas"
-      ? state.items
-      : state.items.filter((item) => item.category === state.activeCategory);
+function normalizeRows(rows) {
+  return rows.map((row) => ({
+    ...row,
+    category: CATEGORIES.includes(row.category) ? row.category : "Otros",
+  }));
+}
 
-  const pending = state.items.filter((item) => !item.done).length;
-  pendingCount.textContent =
-    pending === 1 ? "1 producto pendiente" : `${pending} productos pendientes`;
+function renderShoppingRoute() {
+  const pendingItems = state.items.filter((item) => !item.done);
+  const doneItems = state.items.filter((item) => item.done);
+  const pending = pendingItems.length;
 
-  emptyState.hidden = visibleItems.length > 0 || state.loading;
-  shoppingList.innerHTML = visibleItems.map(renderItem).join("");
+  pendingCount.textContent = pending === 1 ? "1 producto pendiente" : `${pending} productos pendientes`;
+  emptyState.hidden = state.items.length > 0 || state.loading;
 
-  shoppingList.querySelectorAll("[data-action='toggle']").forEach((button) => {
+  renderAisleStrip(pendingItems);
+  renderRouteBoard(pendingItems, doneItems);
+  bindItemActions();
+}
+
+function renderAisleStrip(pendingItems) {
+  aisleStrip.innerHTML = CATEGORIES.map((category) => {
+    const count = pendingItems.filter((item) => item.category === category).length;
+    const isEmpty = count === 0;
+
+    return `
+      <a class="aisle-chip${isEmpty ? " empty" : ""}" href="#section-${slugify(category)}" aria-label="Ir a ${escapeHtml(category)}">
+        <span class="aisle-icon" aria-hidden="true">${getCategoryEmoji(category)}</span>
+        <span class="aisle-text">${escapeHtml(category)}</span>
+        <span class="aisle-count">${count}</span>
+      </a>
+    `;
+  }).join("");
+}
+
+function renderRouteBoard(pendingItems, doneItems) {
+  routeBoard.innerHTML = CATEGORIES.map((category) => {
+    const categoryPending = pendingItems.filter((item) => item.category === category);
+    const categoryDone = doneItems.filter((item) => item.category === category);
+    const total = categoryPending.length + categoryDone.length;
+    const meta = CATEGORY_META[category] || CATEGORY_META.Otros;
+
+    return `
+      <section class="category-section${total === 0 ? " is-empty" : ""}" id="section-${slugify(category)}">
+        <header class="category-header">
+          <span class="category-emoji" aria-hidden="true">${meta.emoji}</span>
+          <span class="category-title-block">
+            <strong>${escapeHtml(category)}</strong>
+            <small>${escapeHtml(meta.aisle)}</small>
+          </span>
+          <span class="category-total">${categoryPending.length}</span>
+        </header>
+        <div class="category-items">
+          ${categoryPending.length > 0 ? categoryPending.map(renderItem).join("") : renderEmptyCategory(category)}
+          ${categoryDone.length > 0 ? categoryDone.map(renderItem).join("") : ""}
+        </div>
+      </section>
+    `;
+  }).join("");
+}
+
+function renderEmptyCategory(category) {
+  return `<div class="category-empty">${getCategoryEmoji(category)} Nada pendiente</div>`;
+}
+
+function renderItem(row) {
+  const doneClass = row.done ? " done" : "";
+  const checkLabel = row.done ? "Marcar como pendiente" : "Marcar como comprado";
+  const itemEmoji = getItemEmoji(row.item, row.category);
+
+  return `
+    <article class="item-card${doneClass}">
+      <button class="check-button" type="button" data-action="toggle" data-id="${row.id}" data-done="${row.done}" aria-label="${checkLabel}">
+        <span aria-hidden="true">${row.done ? "✓" : ""}</span>
+      </button>
+      <span class="item-emoji" aria-hidden="true">${itemEmoji}</span>
+      <span class="item-main">
+        <span class="item-name">${escapeHtml(row.item)}</span>
+        <span class="item-meta">${escapeHtml(row.category || "Otros")}</span>
+      </span>
+      <button class="delete-button" type="button" data-action="delete" data-id="${row.id}" aria-label="Borrar ${escapeHtml(row.item)}">
+        ×
+      </button>
+    </article>
+  `;
+}
+
+function bindItemActions() {
+  routeBoard.querySelectorAll("[data-action='toggle']").forEach((button) => {
     button.addEventListener("click", () => {
       toggleItem(button.dataset.id, button.dataset.done === "true");
     });
   });
 
-  shoppingList.querySelectorAll("[data-action='delete']").forEach((button) => {
+  routeBoard.querySelectorAll("[data-action='delete']").forEach((button) => {
     button.addEventListener("click", () => deleteItem(button.dataset.id));
   });
-}
-
-function renderItem(row) {
-  const date = row.created_at ? new Date(row.created_at).toLocaleDateString("es-ES") : "";
-  const doneClass = row.done ? " done" : "";
-  const checkLabel = row.done ? "Marcar como pendiente" : "Marcar como comprado";
-
-  return `
-    <li class="item-card${doneClass}">
-      <button class="check-button" type="button" data-action="toggle" data-id="${row.id}" data-done="${row.done}" aria-label="${checkLabel}">
-        ${row.done ? "✓" : ""}
-      </button>
-      <span class="item-main">
-        <span class="item-name">${escapeHtml(row.item)}</span>
-        <span class="item-meta">${escapeHtml(row.category || "Otros")}${date ? ` \u00b7 ${date}` : ""}</span>
-      </span>
-      <button class="delete-button" type="button" data-action="delete" data-id="${row.id}" aria-label="Borrar ${escapeHtml(row.item)}">
-        ×
-      </button>
-    </li>
-  `;
 }
 
 function updateSuggestedCategory() {
@@ -240,7 +323,7 @@ async function autoCategorizeIncomingItems() {
   });
 
   connectionState.textContent = "Sincronizada";
-  renderItems();
+  renderShoppingRoute();
 }
 
 function classifyItem(item) {
@@ -256,6 +339,19 @@ function classifyItem(item) {
   return "Otros";
 }
 
+function getItemEmoji(item, category) {
+  const normalizedItem = normalizeText(item);
+  const match = PRODUCT_EMOJI_RULES.find((rule) =>
+    rule.words.some((word) => hasWordOrPhrase(normalizedItem, word)),
+  );
+
+  return match?.emoji || getCategoryEmoji(category);
+}
+
+function getCategoryEmoji(category) {
+  return (CATEGORY_META[category] || CATEGORY_META.Otros).emoji;
+}
+
 function hasWordOrPhrase(normalizedItem, word) {
   const normalizedWord = normalizeText(word);
   return new RegExp(`(^|\\s)${escapeRegExp(normalizedWord)}($|\\s)`).test(normalizedItem);
@@ -266,9 +362,13 @@ function normalizeText(value) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\u00f1\s]/g, " ")
+    .replace(/[^a-z0-9ñ\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function slugify(value) {
+  return normalizeText(value).replace(/\s+/g, "-");
 }
 
 function escapeRegExp(value) {
