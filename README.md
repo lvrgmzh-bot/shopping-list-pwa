@@ -2,7 +2,7 @@
 
 PWA sencilla para móvil conectada a Supabase. Permite añadir productos, filtrarlos por categoría, marcarlos como comprados y borrarlos.
 
-La app clasifica automáticamente los productos por palabras clave. También corrige productos que lleguen desde Alexa/n8n como `Otros` cuando puede reconocer la categoría.
+La app clasifica automáticamente los productos usando el catálogo local `category-catalog.js`, inspirado en secciones habituales de Carrefour y Mercadona. También corrige productos que lleguen desde Alexa/n8n como `Otros` cuando puede reconocer la categoría.
 
 ## Uso local
 

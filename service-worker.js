@@ -1,8 +1,9 @@
-const CACHE_NAME = "shopping-list-pwa-v2";
+const CACHE_NAME = "shopping-list-pwa-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
+  "./category-catalog.js",
   "./app.js",
   "./manifest.webmanifest",
   "./assets/icon.svg",
