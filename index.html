@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#1f6f5b" />
-    <meta name="description" content="Lista de la compra compartida conectada a Supabase." />
+    <meta name="description" content="Lista de la compra visual conectada a Supabase." />
     <title>Lista de la compra</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
@@ -18,7 +18,7 @@
     <main class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Casa</p>
+          <p class="eyebrow">Compra rápida</p>
           <h1>Lista de la compra</h1>
         </div>
         <button class="icon-button" id="refreshButton" type="button" aria-label="Actualizar lista">
@@ -34,8 +34,10 @@
             <button type="submit">Añadir</button>
           </div>
 
-          <label class="field-label" for="categorySelect">Categoría</label>
-          <select id="categorySelect" name="category"></select>
+          <div class="category-picker">
+            <label class="field-label" for="categorySelect">Categoría detectada</label>
+            <select id="categorySelect" name="category"></select>
+          </div>
         </form>
       </section>
 
@@ -44,15 +46,14 @@
         <span id="connectionState">Conectando</span>
       </section>
 
-      <nav class="filters" id="filters" aria-label="Filtrar categorías"></nav>
+      <section class="aisle-strip" id="aisleStrip" aria-label="Resumen por categoría"></section>
 
-      <section class="list-section">
-        <ul class="shopping-list" id="shoppingList"></ul>
-        <div class="empty-state" id="emptyState" hidden>
-          <strong>Lista despejada</strong>
-          <span>Añade algo desde aquí o pídeselo a Alexa.</span>
-        </div>
-      </section>
+      <section class="route-board" id="routeBoard" aria-label="Productos por categoría"></section>
+
+      <div class="empty-state" id="emptyState" hidden>
+        <strong>Lista despejada</strong>
+        <span>Añade algo desde aquí o pídeselo a Alexa.</span>
+      </div>
     </main>
   </body>
 </html>
